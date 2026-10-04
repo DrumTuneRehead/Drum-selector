@@ -1,0 +1,1354 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DrumTune.Rehead - Custom Drum Head Rehead Tool</title>
+    
+    <!-- Tailwind CSS CDN (Self-Contained for Instant Download & GitHub Pages Compatibility) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0b0f17',
+                        cardBg: '#131c2e',
+                        cardHover: '#1e293b',
+                        accent: '#f97316',
+                        accentHover: '#ea580c'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f17;
+            color: #f8fafc;
+        }
+        /* Custom scrollbar for immersive dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f17;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.8; }
+        }
+        .glow-effect {
+            animation: pulseGlow 4s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-darkBg text-slate-100 flex flex-col selection:bg-accent selection:text-white" onclick="handleBodyClick(event)">
+
+    <header class="border-b border-slate-800 bg-darkBg/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="resetApp()">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-accent flex items-center justify-center shadow-lg shadow-accent/20">
+                    <i data-lucide="disc" class="w-6 h-6 text-white animate-spin-slow"></i>
+                </div>
+                <div>
+                    <h1 class="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">DrumTune<span class="text-accent">.Rehead</span></h1>
+                    <p class="text-xs text-slate-400 font-medium">Pro Rehead Configurator</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-3">
+                <button onclick="openSavedModal()" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-xs font-medium text-slate-300 transition border border-slate-700/50">
+                    <i data-lucide="bookmark" class="w-3.5 h-3.5 text-accent"></i>
+                    <span id="savedCountBadge">Saved Recipes (0)</span>
+                </button>
+                <div class="hidden sm:flex items-center space-x-1 text-xs text-slate-400 bg-slate-900 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-400"></i>
+                    <span>Smart Search Dropdown Active</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-grow max-w-5xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+        
+        <!-- Wizard Progress Bar -->
+        <div id="wizardProgressContainer" class="mb-10">
+            <div class="flex items-center justify-between relative mb-2">
+                <div class="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-slate-800 z-0"></div>
+                <div id="progressBarFill" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-accent z-0 transition-all duration-300" style="width: 0%;"></div>
+                
+                <!-- Step 1 Indicator -->
+                <div id="stepIndicator1" class="relative z-10 flex flex-col items-center cursor-pointer" onclick="goToStep(1)">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-accent text-white shadow-lg shadow-accent/30 transition-all">1</div>
+                    <span class="text-xs font-semibold mt-1.5 text-accent">Kit Config</span>
+                </div>
+                <!-- Step 2 Indicator -->
+                <div id="stepIndicator2" class="relative z-10 flex flex-col items-center cursor-pointer" onclick="goToStep(2)">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-800 text-slate-400 border border-slate-700 transition-all">2</div>
+                    <span class="text-xs font-medium mt-1.5 text-slate-400">Genre & Style</span>
+                </div>
+                <!-- Step 3 Indicator -->
+                <div id="stepIndicator3" class="relative z-10 flex flex-col items-center cursor-pointer" onclick="goToStep(3)">
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-800 text-slate-400 border border-slate-700 transition-all">3</div>
+                    <span class="text-xs font-medium mt-1.5 text-slate-400">Sound DNA</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notification Toast -->
+        <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+            <div class="bg-slate-900 border border-slate-700 text-slate-100 px-4 py-3 rounded-xl shadow-2xl flex items-center space-x-3">
+                <div id="toastIcon" class="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <p id="toastTitle" class="text-sm font-bold">Success</p>
+                    <p id="toastMsg" class="text-xs text-slate-400">Action completed successfully.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- WIZARD STEP 1: KIT CONFIGURATION -->
+        <section id="wizardStep1" class="space-y-6">
+            <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="p-2.5 bg-accent/10 rounded-xl text-accent">
+                        <i data-lucide="disc" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Configure Your Drum Kit</h2>
+                        <p class="text-sm text-slate-400">Specify your drum shell sizes for accurate head diameter matching.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <!-- Snare Diameter -->
+                    <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4">
+                        <label class="block text-sm font-semibold text-slate-200 mb-2 flex items-center justify-between">
+                            <span>Snare Drum Diameter</span>
+                            <span class="text-xs text-accent font-mono">Batter & Resonant</span>
+                        </label>
+                        <select id="snareSize" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-accent transition">
+                            <option value="14" selected>14" Standard (Most Common)</option>
+                            <option value="13">13" Piccolo / Tight</option>
+                        </select>
+                    </div>
+
+                    <!-- Kick Diameter -->
+                    <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4">
+                        <label class="block text-sm font-semibold text-slate-200 mb-2 flex items-center justify-between">
+                            <span>Kick / Bass Drum Diameter</span>
+                            <span class="text-xs text-accent font-mono">Batter & Resonant</span>
+                        </label>
+                        <select id="kickSize" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3.5 py-2.5 text-slate-200 text-sm focus:outline-none focus:border-accent transition">
+                            <option value="22" selected>22" Standard Rock Kick</option>
+                            <option value="20">20" Punchy Jazz/Fusion Kick</option>
+                            <option value="24">24" Massive Arena Kick</option>
+                            <option value="18">18" Compact Bebop Kick</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Number of Toms Selector -->
+                <div class="bg-slate-900/60 border border-slate-800/80 rounded-xl p-4 mb-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-200">Number of Rack & Floor Toms</label>
+                            <p class="text-xs text-slate-400">Select how many toms are in your current setup (1 to 6).</p>
+                        </div>
+                        <div class="mt-3 sm:mt-0 flex items-center space-x-1.5 bg-slate-950 p-1 rounded-lg border border-slate-800">
+                            <button onclick="setTomCount(1)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition bg-slate-800 text-white" data-count="1">1</button>
+                            <button onclick="setTomCount(2)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white" data-count="2">2</button>
+                            <button onclick="setTomCount(3)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white" data-count="3">3</button>
+                            <button onclick="setTomCount(4)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white" data-count="4">4</button>
+                            <button onclick="setTomCount(5)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white" data-count="5">5</button>
+                            <button onclick="setTomCount(6)" class="tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white" data-count="6">6</button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Tom Diameters Container -->
+                    <div id="tomsContainer" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
+                        <!-- Dynamically generated tom selectors injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Step 1 Navigation -->
+                <div class="flex justify-end pt-4">
+                    <button onclick="nextStep(2)" class="flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-accent hover:from-amber-500 hover:to-accentHover text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-accent/20 transition transform active:scale-95">
+                        <span>Next: Genre & Style</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- WIZARD STEP 2: GENRE & PLAY STYLE -->
+        <section id="wizardStep2" class="space-y-6 hidden">
+            <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="p-2.5 bg-accent/10 rounded-xl text-accent">
+                        <i data-lucide="sliders-horizontal" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Genre & Play Style</h2>
+                        <p class="text-sm text-slate-400">Help us understand the musical context and how hard you strike the drums.</p>
+                    </div>
+                </div>
+
+                <!-- Genre Selection Cards -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-slate-200 mb-3">Target Musical Genre</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div onclick="selectGenre('Rock')" id="genreCard-Rock" class="genre-card cursor-pointer bg-slate-900/80 border-2 border-accent rounded-xl p-4 text-center transition hover:border-accent/80 group">
+                            <div class="w-10 h-10 rounded-lg bg-accent/20 text-accent mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition">
+                                <i data-lucide="zap" class="w-5 h-5"></i>
+                            </div>
+                            <h3 class="font-bold text-sm text-white">Rock / Metal</h3>
+                            <p class="text-xs text-slate-400 mt-1">Powerful, high durability</p>
+                        </div>
+                        <div onclick="selectGenre('Gospel/Pop')" id="genreCard-Gospel/Pop" class="genre-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 text-center transition hover:border-slate-700 group">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 text-slate-300 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition">
+                                <i data-lucide="radio" class="w-5 h-5"></i>
+                            </div>
+                            <h3 class="font-bold text-sm text-white">Gospel / Pop</h3>
+                            <p class="text-xs text-slate-400 mt-1">Controlled, fat & studio-ready</p>
+                        </div>
+                        <div onclick="selectGenre('Jazz')" id="genreCard-Jazz" class="genre-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 text-center transition hover:border-slate-700 group">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 text-slate-300 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition">
+                                <i data-lucide="music" class="w-5 h-5"></i>
+                            </div>
+                            <h3 class="font-bold text-sm text-white">Jazz / Acoustic</h3>
+                            <p class="text-xs text-slate-400 mt-1">Open, resonant & sensitive</p>
+                        </div>
+                        <div onclick="selectGenre('Indie')" id="genreCard-Indie" class="genre-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 text-center transition hover:border-slate-700 group">
+                            <div class="w-10 h-10 rounded-lg bg-slate-800 text-slate-300 mx-auto mb-2 flex items-center justify-center group-hover:scale-110 transition">
+                                <i data-lucide="headphones" class="w-5 h-5"></i>
+                            </div>
+                            <h3 class="font-bold text-sm text-white">Indie / Alternative</h3>
+                            <p class="text-xs text-slate-400 mt-1">Warm, vintage resonance</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Play Style Selection Cards -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-slate-200 mb-3">Your Playing Dynamics & Attack Style</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div onclick="selectStyle('Heavy Hitter')" id="styleCard-Heavy Hitter" class="style-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 transition hover:border-slate-700">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <div class="w-8 h-8 rounded-lg bg-slate-800 text-amber-400 flex items-center justify-center">
+                                    <i data-lucide="hammer" class="w-4 h-4"></i>
+                                </div>
+                                <h3 class="font-bold text-sm text-white">Heavy Hitter</h3>
+                            </div>
+                            <p class="text-xs text-slate-400">Aggressive rimshots and heavy stick impact. Requires multi-ply durability.</p>
+                        </div>
+                        <div onclick="selectStyle('Balanced')" id="styleCard-Balanced" class="style-card cursor-pointer bg-slate-900/80 border-2 border-accent rounded-xl p-4 transition hover:border-accent/80">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <div class="w-8 h-8 rounded-lg bg-accent/20 text-accent flex items-center justify-center">
+                                    <i data-lucide="activity" class="w-4 h-4"></i>
+                                </div>
+                                <h3 class="font-bold text-sm text-white">Balanced</h3>
+                            </div>
+                            <p class="text-xs text-slate-400">Versatile touch suited for gigging across multiple genres and room sizes.</p>
+                        </div>
+                        <div onclick="selectStyle('Dynamic')" id="styleCard-Dynamic" class="style-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 transition hover:border-slate-700">
+                            <div class="flex items-center space-x-3 mb-2">
+                                <div class="w-8 h-8 rounded-lg bg-slate-800 text-emerald-400 flex items-center justify-center">
+                                    <i data-lucide="feather" class="w-4 h-4"></i>
+                                </div>
+                                <h3 class="font-bold text-sm text-white">Dynamic / Light</h3>
+                            </div>
+                            <p class="text-xs text-slate-400">Nuanced ghost notes, brush work, and maximum open shell resonance.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 Navigation -->
+                <div class="flex justify-between pt-4">
+                    <button onclick="prevStep(1)" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium px-5 py-3 rounded-xl transition">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        <span>Back</span>
+                    </button>
+                    <button onclick="nextStep(3)" class="flex items-center space-x-2 bg-gradient-to-r from-amber-600 to-accent hover:from-amber-500 hover:to-accentHover text-white font-semibold px-6 py-3 rounded-xl shadow-lg shadow-accent/20 transition transform active:scale-95">
+                        <span>Next: Sound DNA</span>
+                        <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- WIZARD STEP 3: SOUND PREFERENCES -->
+        <section id="wizardStep3" class="space-y-6 hidden">
+            <div class="bg-cardBg border border-slate-800/80 rounded-2xl p-6 sm:p-8 shadow-xl relative overflow-hidden">
+                <div class="absolute -right-10 -bottom-10 w-48 h-48 bg-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+                
+                <div class="flex items-center space-x-3 mb-6">
+                    <div class="p-2.5 bg-accent/10 rounded-xl text-accent">
+                        <i data-lucide="sliders" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-bold text-white">Sound Preferences & Tone Tuning</h2>
+                        <p class="text-sm text-slate-400">Fine-tune your acoustic profile for attack character, sustain length, and muffling.</p>
+                    </div>
+                </div>
+
+                <div class="space-y-6 mb-8 bg-slate-900/60 border border-slate-800/80 rounded-xl p-6">
+                    <!-- Attack Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-semibold text-slate-200">Attack Character</label>
+                            <span id="attackLabel" class="text-xs font-mono text-accent bg-accent/10 px-2.5 py-1 rounded-md">Balanced</span>
+                        </div>
+                        <input type="range" id="prefAttack" min="1" max="5" value="3" oninput="updateSliderLabels()" class="w-full accent-accent h-2 bg-slate-950 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1 font-medium">
+                            <span>Warm / Woody</span>
+                            <span>Crisp / Bright</span>
+                        </div>
+                    </div>
+
+                    <!-- Sustain Slider -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-semibold text-slate-200">Sustain & Ring</label>
+                            <span id="sustainLabel" class="text-xs font-mono text-accent bg-accent/10 px-2.5 py-1 rounded-md">Controlled</span>
+                        </div>
+                        <input type="range" id="prefSustain" min="1" max="5" value="3" oninput="updateSliderLabels()" class="w-full accent-accent h-2 bg-slate-950 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1 font-medium">
+                            <span>Dry / Controlled</span>
+                            <span>Open / Ringing</span>
+                        </div>
+                    </div>
+
+                    <!-- Muffling Preference -->
+                    <div>
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-sm font-semibold text-slate-200">Built-in Muffling / Control Rings</label>
+                            <span id="mufflingLabel" class="text-xs font-mono text-accent bg-accent/10 px-2.5 py-1 rounded-md">Moderate Control</span>
+                        </div>
+                        <input type="range" id="prefMuffling" min="1" max="3" value="2" oninput="updateSliderLabels()" class="w-full accent-accent h-2 bg-slate-950 rounded-lg cursor-pointer">
+                        <div class="flex justify-between text-xs text-slate-500 mt-1 font-medium">
+                            <span>None (Open Plies)</span>
+                            <span>Built-in Overtone Control</span>
+                            <span>Heavy (Hydraulic/Ring)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Brand Preference Tag Filter -->
+                <div class="mb-8">
+                    <label class="block text-sm font-semibold text-slate-200 mb-3">Preferred Drum Head Brand (Optional)</label>
+                    <div class="grid grid-cols-4 gap-3">
+                        <button onclick="setBrandPreference('Any')" id="brand-Any" class="brand-btn py-2.5 px-3 rounded-xl border border-accent bg-accent/10 text-accent font-semibold text-xs transition">Any Brand</button>
+                        <button onclick="setBrandPreference('Remo')" id="brand-Remo" class="brand-btn py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-semibold text-xs transition hover:border-slate-700">Remo</button>
+                        <button onclick="setBrandPreference('Evans')" id="brand-Evans" class="brand-btn py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-semibold text-xs transition hover:border-slate-700">Evans</button>
+                        <button onclick="setBrandPreference('Aquarian')" id="brand-Aquarian" class="brand-btn py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-semibold text-xs transition hover:border-slate-700">Aquarian</button>
+                    </div>
+                </div>
+
+                <!-- Step 3 Navigation -->
+                <div class="flex justify-between pt-4">
+                    <button onclick="prevStep(2)" class="flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium px-5 py-3 rounded-xl transition">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        <span>Back</span>
+                    </button>
+                    <button onclick="generateRecipe()" class="flex items-center space-x-2 bg-gradient-to-r from-amber-500 via-accent to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold px-8 py-3.5 rounded-xl shadow-xl shadow-accent/30 transition transform hover:scale-[1.02] active:scale-95">
+                        <i data-lucide="wand-2" class="w-5 h-5"></i>
+                        <span>Generate Rehead Recipe</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- WIZARD STEP 4: RESULTS DASHBOARD -->
+        <section id="wizardStep4" class="space-y-6 hidden">
+            <div class="flex flex-col md:flex-row md:items-center justify-between bg-cardBg border border-slate-800 p-6 rounded-2xl shadow-xl gap-4">
+                <div>
+                    <div class="flex items-center space-x-2 text-accent text-xs font-bold uppercase tracking-wider mb-1">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        <span>Cohesive Custom Rehead Recipe</span>
+                    </div>
+                    <h2 class="text-2xl font-black text-white" id="resultRecipeTitle">Your Ultimate Custom Drum Bundle</h2>
+                    <p class="text-sm text-slate-400 mt-1" id="resultRecipeSubtitle">Optimized for Rock with a Balanced touch. Estimated bundle price range: <span id="totalBundlePrice" class="text-emerald-400 font-bold">$250.00 - $310.00</span></p>
+                </div>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button onclick="saveCurrentRecipe()" class="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition border border-slate-700">
+                        <i data-lucide="bookmark-plus" class="w-4 h-4 text-accent"></i>
+                        <span>Save Recipe</span>
+                    </button>
+                    <button onclick="copyRecipeSummary()" class="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition border border-slate-700">
+                        <i data-lucide="copy" class="w-4 h-4 text-slate-300"></i>
+                        <span>Copy List</span>
+                    </button>
+                    <button onclick="resetApp()" class="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl bg-accent hover:bg-accentHover text-xs font-semibold text-white transition shadow-lg shadow-accent/20">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        <span>New Config</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Filter Tabs for Drum Breakdown -->
+            <div class="flex items-center space-x-2 overflow-x-auto pb-2">
+                <button onclick="filterDrumCards('all')" id="filterBtn-all" class="filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-accent text-white transition">All Drums (<span id="countAll">0</span>)</button>
+                <button onclick="filterDrumCards('snare')" id="filterBtn-snare" class="filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition">Snare</button>
+                <button onclick="filterDrumCards('tom')" id="filterBtn-tom" class="filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition">Toms</button>
+                <button onclick="filterDrumCards('kick')" id="filterBtn-kick" class="filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition">Bass Drum</button>
+            </div>
+
+            <!-- Drum Cards Grid -->
+            <div id="drumCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Dynamically injected drum breakdown cards -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- SAVED RECIPES MODAL -->
+    <div id="savedModal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between pb-4 border-b border-slate-800">
+                <div class="flex items-center space-x-2">
+                    <i data-lucide="bookmark" class="w-5 h-5 text-accent"></i>
+                    <h3 class="font-bold text-lg text-white">Saved Rehead Recipes</h3>
+                </div>
+                <button onclick="closeSavedModal()" class="w-8 h-8 rounded-lg bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <div id="savedRecipesList" class="py-4 overflow-y-auto space-y-3 flex-grow">
+                <!-- Injected saved items -->
+            </div>
+            <div class="pt-4 border-t border-slate-800 flex justify-end">
+                <button onclick="closeSavedModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-semibold rounded-xl text-slate-300 transition">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="border-t border-slate-800/80 bg-darkBg py-6 text-center text-xs text-slate-500">
+        <p>DrumTune.Rehead Pro Configurator &bull; Smart Search Dropdown Architecture</p>
+    </footer>
+
+    <script>
+        // Mock Database of Drum Heads with Image previews & price ranges
+        const DRUM_HEAD_DATABASE = [
+            // SNARE BATTER
+            {
+                id: 'remo_ambassador_coated',
+                brand: 'Remo',
+                model: 'Ambassador Coated',
+                type: 'snare_batter',
+                genres: ['Jazz', 'Indie', 'Gospel/Pop', 'Rock'],
+                styles: ['Dynamic', 'Balanced'],
+                attack: [3, 4, 5],
+                sustain: [3, 4, 5],
+                muffling: [1, 2],
+                minPrice: 21.99,
+                maxPrice: 25.50,
+                image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=400&q=80',
+                desc: 'The industry standard for snare batter. Open, warm, bright resonance with timeless brush and stick sensitivity.',
+                tuningTip: 'Tune medium-high with the batter head evenly tensioned. Adjust snare wires for crisp ghost note sensitivity.'
+            },
+            {
+                id: 'remo_emperor_coated',
+                brand: 'Remo',
+                model: 'Emperor Coated',
+                type: 'snare_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter', 'Balanced'],
+                attack: [2, 3, 4],
+                sustain: [1, 2, 3],
+                muffling: [2],
+                minPrice: 24.99,
+                maxPrice: 28.99,
+                image: 'https://images.unsplash.com/photo-1541480601022-230f9ec22b4e?auto=format&fit=crop&w=400&q=80',
+                desc: 'Two-ply 7-mil film providing enhanced durability, warmer midrange tone, and controlled overtones for heavy hitters.',
+                tuningTip: 'Medium tension to lock in a fat crack with controlled ring without needing excessive external dampening.'
+            },
+            {
+                id: 'evans_g2_coated',
+                brand: 'Evans',
+                model: 'G2 Coated',
+                type: 'snare_batter',
+                genres: ['Rock', 'Gospel/Pop', 'Indie'],
+                styles: ['Heavy Hitter', 'Balanced'],
+                attack: [3, 4],
+                sustain: [2, 3],
+                muffling: [2],
+                minPrice: 25.50,
+                maxPrice: 29.50,
+                image: 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=400&q=80',
+                desc: 'Features two 7-mil plies ensuring consistency, durability, and a deep warm foundation with powerful attack.',
+                tuningTip: 'Seat the head firmly, bring lugs up evenly to medium tightness for optimal stadium pop.'
+            },
+            {
+                id: 'aquarian_texture_coated',
+                brand: 'Aquarian',
+                model: 'Texture Coated with Power Dot',
+                type: 'snare_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter'],
+                attack: [4, 5],
+                sustain: [1, 2],
+                muffling: [3],
+                minPrice: 23.99,
+                maxPrice: 27.50,
+                image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80',
+                desc: 'Extra durability with a center power dot to absorb heavy rimshots while keeping open warmth at the edges.',
+                tuningTip: 'Medium-high tuning yields a focused crack with zero unwanted metallic ringing.'
+            },
+
+            // SNARE RESONANT
+            {
+                id: 'remo_ambassador_snare_reso',
+                brand: 'Remo',
+                model: 'Ambassador Snare Side',
+                type: 'snare_reso',
+                genres: ['Any', 'Rock', 'Jazz', 'Gospel/Pop', 'Indie'],
+                styles: ['Any', 'Balanced', 'Heavy Hitter', 'Dynamic'],
+                attack: [1,2,3,4,5],
+                sustain: [1,2,3,4,5],
+                muffling: [1,2,3],
+                minPrice: 19.00,
+                maxPrice: 22.99,
+                image: 'https://images.unsplash.com/photo-1563381313-5a0db04092b3?auto=format&fit=crop&w=400&q=80',
+                desc: 'Ultra-thin 3-mil film engineered specifically to maximize snare wire response and bottom-end projection.',
+                tuningTip: 'Tune higher than the batter head to ensure crisp snappy snare response and elimination of choke.'
+            },
+
+            // TOM BATTER
+            {
+                id: 'remo_clear_emperor',
+                brand: 'Remo',
+                model: 'Emperor Clear (Batter)',
+                type: 'tom_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter', 'Balanced'],
+                attack: [4, 5],
+                sustain: [2, 3],
+                muffling: [2],
+                minPrice: 21.50,
+                maxPrice: 26.00,
+                image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=400&q=80',
+                desc: 'Renowned for punchy attack, durability, and deep tonal projection ideal for modern rock and pop mixes.',
+                tuningTip: 'Tune bottom resonant slightly higher than batter for a smooth pitch bend down.'
+            },
+            {
+                id: 'evans_ec2s_clear',
+                brand: 'Evans',
+                model: 'EC2S Clear with Edge Control',
+                type: 'tom_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter'],
+                attack: [3, 4, 5],
+                sustain: [1, 2],
+                muffling: [3],
+                minPrice: 29.99,
+                maxPrice: 34.99,
+                image: 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=400&q=80',
+                desc: 'Sound Shaping Technology edge dampening ring isolates higher overtones for a pre-EQed fat studio tone.',
+                tuningTip: 'Medium to low tuning for thunderous floor tom depth and instant decay.'
+            },
+            {
+                id: 'remo_ambassador_coated_tom',
+                brand: 'Remo',
+                model: 'Ambassador Coated (Tom Batter)',
+                type: 'tom_batter',
+                genres: ['Jazz', 'Indie'],
+                styles: ['Dynamic', 'Balanced'],
+                attack: [2, 3],
+                sustain: [4, 5],
+                muffling: [1],
+                minPrice: 19.99,
+                maxPrice: 23.99,
+                image: 'https://images.unsplash.com/photo-1541480601022-230f9ec22b4e?auto=format&fit=crop&w=400&q=80',
+                desc: 'Open, warm, singing resonance with vintage organic sustain and wonderful stick articulation.',
+                tuningTip: 'Medium-low tuning for warm jazz and indie warmth.'
+            },
+            {
+                id: 'aquarian_modern_vintage',
+                brand: 'Aquarian',
+                model: 'Modern Vintage Medium',
+                type: 'tom_batter',
+                genres: ['Indie', 'Jazz'],
+                styles: ['Dynamic', 'Balanced'],
+                attack: [2, 3],
+                sustain: [4, 5],
+                muffling: [1, 2],
+                minPrice: 24.50,
+                maxPrice: 28.99,
+                image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80',
+                desc: 'Special coating mimicking calfskin look and sound, delivering rich dark warmth and lush overtone bloom.',
+                tuningTip: 'Tune down close to the wrinkle point for classic vintage warmth.'
+            },
+
+            // TOM RESONANT
+            {
+                id: 'remo_ambassador_clear_reso',
+                brand: 'Remo',
+                model: 'Ambassador Clear Resonant',
+                type: 'tom_reso',
+                genres: ['Any', 'Rock', 'Jazz', 'Gospel/Pop', 'Indie'],
+                styles: ['Any', 'Balanced', 'Heavy Hitter', 'Dynamic'],
+                attack: [1,2,3,4,5],
+                sustain: [1,2,3,4,5],
+                muffling: [1,2,3],
+                minPrice: 17.99,
+                maxPrice: 21.50,
+                image: 'https://images.unsplash.com/photo-1563381313-5a0db04092b3?auto=format&fit=crop&w=400&q=80',
+                desc: 'Single-ply 10-mil film that provides maximum sustain and clean transparent tonal decay.',
+                tuningTip: 'Match resonant tuning precisely to batter for pure tone or tune slightly higher for pitch bend.'
+            },
+
+            // KICK BATTER
+            {
+                id: 'remo_powerstroke3_clear',
+                brand: 'Remo',
+                model: 'Powerstroke 3 Clear (Batter)',
+                type: 'kick_batter',
+                genres: ['Rock', 'Gospel/Pop', 'Indie'],
+                styles: ['Heavy Hitter', 'Balanced'],
+                attack: [3, 4, 5],
+                sustain: [1, 2],
+                muffling: [3],
+                minPrice: 42.99,
+                maxPrice: 51.99,
+                image: 'https://images.unsplash.com/photo-1519892300165-cb5542fb47c7?auto=format&fit=crop&w=400&q=80',
+                desc: 'Features a thin underlayment dampening ring that subtly subdues high-frequency overtones for a punchy low-end thud.',
+                tuningTip: 'Finger-tighten tension rods then turn 1 to 1.5 turns for instant punch without pillow muffling.'
+            },
+            {
+                id: 'evans_emad2',
+                brand: 'Evans',
+                model: 'EMAD2 Clear Bass Batter',
+                type: 'kick_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter'],
+                attack: [4, 5],
+                sustain: [1, 2],
+                muffling: [3],
+                minPrice: 48.99,
+                maxPrice: 57.50,
+                image: 'https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=400&q=80',
+                desc: 'Two-ply (7mil and 10mil) with externally mounted adjustable dampening rings for extreme attack and punch.',
+                tuningTip: 'Use the wide dampening ring for heavy metal/rock punch or narrow ring for open stadium boom.'
+            },
+            {
+                id: 'aquarian_super_kick_ii',
+                brand: 'Aquarian',
+                model: 'Super-Kick II Clear',
+                type: 'kick_batter',
+                genres: ['Rock', 'Gospel/Pop'],
+                styles: ['Heavy Hitter', 'Balanced'],
+                attack: [3, 4],
+                sustain: [1, 2],
+                muffling: [3],
+                minPrice: 46.50,
+                maxPrice: 55.00,
+                image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=400&q=80',
+                desc: 'Two-ply floating muffle ring built into the perimeter to eliminate unwanted ringing and produce massive low-end.',
+                tuningTip: 'Tune just above wrinkle for maximum chest-hitting low frequency.'
+            },
+
+            // KICK RESONANT
+            {
+                id: 'remo_powersroke3_ebony_reso',
+                brand: 'Remo',
+                model: 'Powerstroke 3 Ebony Resonant (Ported)',
+                type: 'kick_reso',
+                genres: ['Rock', 'Gospel/Pop', 'Indie'],
+                styles: ['Any', 'Balanced', 'Heavy Hitter'],
+                attack: [1,2,3,4,5],
+                sustain: [1,2,3,4,5],
+                muffling: [2, 3],
+                minPrice: 39.99,
+                maxPrice: 47.99,
+                image: 'https://images.unsplash.com/photo-1541480601022-230f9ec22b4e?auto=format&fit=crop&w=400&q=80',
+                desc: 'Pre-ported resonant bass drum head with dampening ring for microphone placement and low-end focus.',
+                tuningTip: 'Tune slightly higher than batter to maintain shell projection and snappy rebound.'
+            }
+        ];
+
+        // Application State
+        let appState = {
+            currentStep: 1,
+            snareSize: 14,
+            kickSize: 22,
+            tomCount: 3,
+            toms: [10, 12, 16], // default sizes for 3 toms
+            genre: 'Rock',
+            playStyle: 'Balanced',
+            attack: 3,
+            sustain: 3,
+            muffling: 2,
+            brandPreference: 'Any',
+            currentRecipe: null,
+            activeFilter: 'all'
+        };
+
+        // Saved Recipes Storage key
+        const STORAGE_KEY = 'drumtune_rehead_saved_recipes_v1';
+
+        // Initialize application on load
+        window.onload = function() {
+            renderTomSelectors();
+            updateSliderLabels();
+            lucide.createIcons();
+        };
+
+        // Close any active retailer dropdown when clicking outside
+        function handleBodyClick(event) {
+            if (!event.target.closest('.retailer-dropdown-container')) {
+                document.querySelectorAll('.retailer-dropdown-menu').forEach(menu => {
+                    menu.classList.add('hidden');
+                });
+            }
+        }
+
+        // Step Navigation
+        function goToStep(stepNumber) {
+            if (stepNumber < 1 || stepNumber > 4) return;
+            appState.currentStep = stepNumber;
+            
+            // Hide all sections
+            for (let i = 1; i <= 4; i++) {
+                const sec = document.getElementById(`wizardStep${i}`);
+                if (sec) sec.classList.add('hidden');
+            }
+            
+            // Show target section
+            const targetSec = document.getElementById(`wizardStep${stepNumber}`);
+            if (targetSec) targetSec.classList.remove('hidden');
+
+            // Update Progress bar & indicators
+            updateProgressBar();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            lucide.createIcons();
+        }
+
+        function nextStep(step) {
+            if (step === 2) {
+                appState.snareSize = parseInt(document.getElementById('snareSize').value);
+                appState.kickSize = parseInt(document.getElementById('kickSize').value);
+                collectTomSizes();
+            }
+            goToStep(step);
+        }
+
+        function prevStep(step) {
+            goToStep(step);
+        }
+
+        function updateProgressBar() {
+            const fill = document.getElementById('progressBarFill');
+            const pct = ((appState.currentStep - 1) / 3) * 100;
+            fill.style.width = `${pct}%`;
+
+            for (let i = 1; i <= 3; i++) {
+                const indicator = document.getElementById(`stepIndicator${i}`);
+                const circle = indicator.querySelector('div');
+                const label = indicator.querySelector('span');
+
+                if (i < appState.currentStep) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-emerald-500 text-white shadow-md transition-all';
+                    circle.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                    label.className = 'text-xs font-semibold mt-1.5 text-emerald-400';
+                } else if (i === appState.currentStep) {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-accent text-white shadow-lg shadow-accent/30 transition-all';
+                    circle.textContent = i;
+                    label.className = 'text-xs font-semibold mt-1.5 text-accent';
+                } else {
+                    circle.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-800 text-slate-400 border border-slate-700 transition-all';
+                    circle.textContent = i;
+                    label.className = 'text-xs font-medium mt-1.5 text-slate-400';
+                }
+            }
+        }
+
+        // Tom Count Management
+        function setTomCount(count) {
+            appState.tomCount = count;
+            
+            document.querySelectorAll('.tom-count-btn').forEach(btn => {
+                const c = parseInt(btn.getAttribute('data-count'));
+                if (c === count) {
+                    btn.className = 'tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition bg-slate-800 text-white shadow';
+                } else {
+                    btn.className = 'tom-count-btn px-3 py-1.5 rounded-md text-xs font-bold transition text-slate-400 hover:text-white';
+                }
+            });
+
+            if (count === 1) appState.toms = [12];
+            else if (count === 2) appState.toms = [12, 16];
+            else if (count === 3) appState.toms = [10, 12, 16];
+            else if (count === 4) appState.toms = [10, 12, 14, 16];
+            else if (count === 5) appState.toms = [8, 10, 12, 14, 16];
+            else if (count === 6) appState.toms = [8, 10, 12, 14, 16, 18];
+
+            renderTomSelectors();
+        }
+
+        function renderTomSelectors() {
+            const container = document.getElementById('tomsContainer');
+            container.innerHTML = '';
+            const commonSizes = [8, 10, 12, 13, 14, 16, 18];
+
+            for (let i = 0; i < appState.tomCount; i++) {
+                const currentSize = appState.toms[i] || 12;
+                const labelName = i < (appState.tomCount - 2) || (appState.tomCount === 1) ? `Rack Tom ${i+1}` : `Floor Tom ${i+1}`;
+                
+                const div = document.createElement('div');
+                div.className = 'bg-slate-950/60 border border-slate-800/80 rounded-lg p-3';
+                div.innerHTML = `
+                    <label class="block text-xs font-bold text-slate-300 mb-1.5">${labelName} Diameter</label>
+                    <select id="tomSize_${i}" class="tom-select-input w-full bg-slate-900 border border-slate-700 rounded-md px-3 py-2 text-slate-200 text-xs focus:outline-none focus:border-accent transition">
+                        ${commonSizes.map(sz => `<option value="${sz}" ${sz === currentSize ? 'selected' : ''}>${sz}" Tom</option>`).join('')}
+                    </select>
+                `;
+                container.appendChild(div);
+            }
+        }
+
+        function collectTomSizes() {
+            appState.toms = [];
+            for (let i = 0; i < appState.tomCount; i++) {
+                const sel = document.getElementById(`tomSize_${i}`);
+                if (sel) {
+                    appState.toms.push(parseInt(sel.value));
+                }
+            }
+        }
+
+        // Genre & Style selection
+        function selectGenre(genre) {
+            appState.genre = genre;
+            document.querySelectorAll('.genre-card').forEach(card => {
+                card.className = 'genre-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 text-center transition hover:border-slate-700 group';
+            });
+            const active = document.getElementById(`genreCard-${genre}`);
+            if (active) {
+                active.className = 'genre-card cursor-pointer bg-slate-900/80 border-2 border-accent rounded-xl p-4 text-center transition hover:border-accent/80 group shadow-lg shadow-accent/10';
+            }
+        }
+
+        function selectStyle(style) {
+            appState.playStyle = style;
+            document.querySelectorAll('.style-card').forEach(card => {
+                card.className = 'style-card cursor-pointer bg-slate-900/80 border-2 border-slate-800 rounded-xl p-4 transition hover:border-slate-700';
+            });
+            const active = document.getElementById(`styleCard-${style}`);
+            if (active) {
+                active.className = 'style-card cursor-pointer bg-slate-900/80 border-2 border-accent rounded-xl p-4 transition hover:border-accent/80 shadow-lg shadow-accent/10';
+            }
+        }
+
+        function setBrandPreference(brand) {
+            appState.brandPreference = brand;
+            document.querySelectorAll('.brand-btn').forEach(btn => {
+                btn.className = 'brand-btn py-2.5 px-3 rounded-xl border border-slate-800 bg-slate-900 text-slate-300 font-semibold text-xs transition hover:border-slate-700';
+            });
+            const active = document.getElementById(`brand-${brand}`);
+            if (active) {
+                active.className = 'brand-btn py-2.5 px-3 rounded-xl border border-accent bg-accent/10 text-accent font-semibold text-xs transition';
+            }
+        }
+
+        // Slider labels update
+        function updateSliderLabels() {
+            appState.attack = parseInt(document.getElementById('prefAttack').value);
+            appState.sustain = parseInt(document.getElementById('prefSustain').value);
+            appState.muffling = parseInt(document.getElementById('prefMuffling').value);
+
+            const attackTexts = ['Very Warm', 'Warm', 'Balanced', 'Bright', 'Crisp & Punchy'];
+            const sustainTexts = ['Super Dry', 'Controlled', 'Moderate Sustain', 'Open Ring', 'Maximum Ring'];
+            const mufflingTexts = ['None (Open)', 'Moderate Control', 'Heavy Muffle'];
+
+            document.getElementById('attackLabel').textContent = attackTexts[appState.attack - 1];
+            document.getElementById('sustainLabel').textContent = sustainTexts[appState.sustain - 1];
+            document.getElementById('mufflingLabel').textContent = mufflingTexts[appState.muffling - 1];
+        }
+
+        // Matching Algorithm
+        function findBestHead(type, size) {
+            let candidates = DRUM_HEAD_DATABASE.filter(h => h.type === type);
+
+            if (appState.brandPreference !== 'Any') {
+                const brandMatches = candidates.filter(h => h.brand === appState.brandPreference);
+                if (brandMatches.length > 0) candidates = brandMatches;
+            }
+
+            let scored = candidates.map(head => {
+                let score = 0;
+                if (head.genres.includes(appState.genre) || head.genres.includes('Any')) score += 3;
+                if (head.styles.includes(appState.playStyle) || head.styles.includes('Any')) score += 3;
+                if (head.attack.includes(appState.attack)) score += 2;
+                if (head.sustain.includes(appState.sustain)) score += 2;
+                if (head.muffling.includes(appState.muffling)) score += 2;
+                return { head, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            return scored.length > 0 ? scored[0].head : candidates[0];
+        }
+
+        // Generate Recipe Execution
+        function generateRecipe() {
+            collectTomSizes();
+            updateSliderLabels();
+
+            let items = [];
+            let totalMinPrice = 0;
+            let totalMaxPrice = 0;
+
+            // 1. Snare Batter & Reso
+            const snareBatter = findBestHead('snare_batter', appState.snareSize);
+            const snareReso = findBestHead('snare_reso', appState.snareSize);
+            
+            items.push({
+                category: 'snare',
+                position: `Snare Batter (${appState.snareSize}")`,
+                head: snareBatter,
+                size: `${appState.snareSize}"`
+            });
+            totalMinPrice += snareBatter.minPrice;
+            totalMaxPrice += snareBatter.maxPrice;
+
+            items.push({
+                category: 'snare',
+                position: `Snare Resonant (${appState.snareSize}")`,
+                head: snareReso,
+                size: `${appState.snareSize}"`
+            });
+            totalMinPrice += snareReso.minPrice;
+            totalMaxPrice += snareReso.maxPrice;
+
+            // 2. Toms Batter & Reso
+            appState.toms.forEach((tomSize, idx) => {
+                const label = idx < (appState.toms.length - 2) || appState.toms.length === 1 ? `Rack Tom ${idx+1}` : `Floor Tom ${idx+1}`;
+                const tomBatter = findBestHead('tom_batter', tomSize);
+                const tomReso = findBestHead('tom_reso', tomSize);
+
+                items.push({
+                    category: 'tom',
+                    position: `${label} Batter (${tomSize}")`,
+                    head: tomBatter,
+                    size: `${tomSize}"`
+                });
+                totalMinPrice += tomBatter.minPrice;
+                totalMaxPrice += tomBatter.maxPrice;
+
+                items.push({
+                    category: 'tom',
+                    position: `${label} Resonant (${tomSize}")`,
+                    head: tomReso,
+                    size: `${tomSize}"`
+                });
+                totalMinPrice += tomReso.minPrice;
+                totalMaxPrice += tomReso.maxPrice;
+            });
+
+            // 3. Kick Batter & Reso
+            const kickBatter = findBestHead('kick_batter', appState.kickSize);
+            const kickReso = findBestHead('kick_reso', appState.kickSize);
+
+            items.push({
+                category: 'kick',
+                position: `Bass Drum Batter (${appState.kickSize}")`,
+                head: kickBatter,
+                size: `${appState.kickSize}"`
+            });
+            totalMinPrice += kickBatter.minPrice;
+            totalMaxPrice += kickBatter.maxPrice;
+
+            items.push({
+                category: 'kick',
+                position: `Bass Drum Resonant (${appState.kickSize}")`,
+                head: kickReso,
+                size: `${appState.kickSize}"`
+            });
+            totalMinPrice += kickReso.minPrice;
+            totalMaxPrice += kickReso.maxPrice;
+
+            appState.currentRecipe = {
+                id: 'recipe_' + Date.now(),
+                title: `${appState.genre} Setup (${appState.tomCount}-Tom, ${appState.kickSize}" Kick)`,
+                date: new Date().toLocaleDateString(),
+                genre: appState.genre,
+                style: appState.playStyle,
+                totalPriceRange: `$${totalMinPrice.toFixed(2)} - $${totalMaxPrice.toFixed(2)}`,
+                items: items
+            };
+
+            renderResultsView();
+            goToStep(4);
+            showToast('Success', 'Generated your custom rehead recipe!');
+        }
+
+        // Render Results Dashboard
+        function renderResultsView() {
+            if (!appState.currentRecipe) return;
+
+            const titleEl = document.getElementById('resultRecipeTitle');
+            if (titleEl) titleEl.textContent = appState.currentRecipe.title;
+
+            const subtitleEl = document.getElementById('resultRecipeSubtitle');
+            if (subtitleEl) {
+                subtitleEl.innerHTML = `Optimized for <span class="text-accent font-semibold">${appState.currentRecipe.genre}</span> with a <span class="text-accent font-semibold">${appState.currentRecipe.style}</span> touch. Estimated bundle price range: <span class="text-emerald-400 font-bold">${appState.currentRecipe.totalPriceRange}</span>`;
+            }
+
+            const totalPriceEl = document.getElementById('totalBundlePrice');
+            if (totalPriceEl) totalPriceEl.textContent = appState.currentRecipe.totalPriceRange;
+
+            const countAllEl = document.getElementById('countAll');
+            if (countAllEl) countAllEl.textContent = appState.currentRecipe.items.length;
+
+            renderDrumCardsGrid('all');
+        }
+
+        function filterDrumCards(category) {
+            appState.activeFilter = category;
+            ['all', 'snare', 'tom', 'kick'].forEach(cat => {
+                const btn = document.getElementById(`filterBtn-${cat}`);
+                if (btn) {
+                    if (cat === category) {
+                        btn.className = 'filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-accent text-white transition';
+                    } else {
+                        btn.className = 'filter-tab px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 text-slate-300 hover:bg-slate-800 transition';
+                    }
+                }
+            });
+            renderDrumCardsGrid(category);
+        }
+
+        function getTuneBotTips(item) {
+            const sizeNum = parseInt(item.size);
+            const isSnare = item.category === 'snare';
+            const isKick = item.category === 'kick';
+            const isReso = item.position.toLowerCase().includes('resonant') || item.position.toLowerCase().includes('reso') || item.position.toLowerCase().includes('snare side');
+            
+            let tips = [];
+            tips.push({ title: 'General Note', text: item.head.tuningTip });
+
+            if (isSnare) {
+                if (isReso) {
+                    tips.push({ title: 'Tune-Bot Frequency', text: 'Tune snare-side to 350Hz–400Hz (~85–88 on Tune-Bot) for sharp crisp wire sensitivity.' });
+                    tips.push({ title: 'Lug Equality', text: 'Check tension directly 1/2 inch from each lug. Uniformity here eliminates snare choke.' });
+                } else {
+                    const freq = appState.attack > 3 ? '330Hz (Tight & Crisp)' : '296Hz (Fat Rock Crack)';
+                    tips.push({ title: 'Tune-Bot Frequency', text: `Target ${freq} at each lug for optimal batter rebound and stick articulation.` });
+                    tips.push({ title: 'Seating Head', text: 'Press firmly in the center until clicks subside, then bring tension up evenly in a star pattern.' });
+                }
+            } else if (isKick) {
+                if (isReso) {
+                    tips.push({ title: 'Tune-Bot Frequency', text: 'Tune kick resonant head around 80Hz–95Hz for solid low-frequency punch and easy mic bleed control.' });
+                } else {
+                    tips.push({ title: 'Tune-Bot Frequency', text: 'Tune batter just above the wrinkle point (~65Hz–75Hz) to maximize chest-hitting sub frequencies.' });
+                    tips.push({ title: 'Beater Strike', text: 'Ensure the batter head tension is uniform at all lugs to prevent unwanted sympathetic frequency beating.' });
+                }
+            } else {
+                if (isReso) {
+                    tips.push({ title: 'Tune-Bot Frequency', text: `For this ${sizeNum}" tom resonant head, tune lugs to match batter frequency (pure tone) or +5Hz for pitch bend down.` });
+                } else {
+                    let recommendedHz = sizeNum === 8 ? '260Hz' : sizeNum === 10 ? '220Hz' : sizeNum === 12 ? '185Hz' : sizeNum === 14 ? '155Hz' : '130Hz';
+                    if (appState.sustain < 3) recommendedHz += ' (tuned lower for dry decay)';
+                    tips.push({ title: 'Tune-Bot Frequency', text: `Target approximately ${recommendedHz} at each lug for a balanced ${appState.genre} sustain profile.` });
+                    tips.push({ title: 'Interval Tuning', text: 'Progress down in thirds or fourths from your highest rack tom to your floor tom for melodic intervals.' });
+                }
+            }
+            return tips;
+        }
+
+        function toggleProTipsDropdown(index) {
+            const content = document.getElementById(`tipsContent_${index}`);
+            const icon = document.getElementById(`tipsChevron_${index}`);
+            if (content && icon) {
+                if (content.classList.contains('hidden')) {
+                    content.classList.remove('hidden');
+                    icon.style.transform = 'rotate(180deg)';
+                } else {
+                    content.classList.add('hidden');
+                    icon.style.transform = 'rotate(0deg)';
+                }
+            }
+        }
+
+        // Toggle small dropdown menu for a specific drum card
+        function toggleRetailerDropdown(index, event) {
+            event.stopPropagation();
+            // Close all other dropdowns first
+            document.querySelectorAll('.retailer-dropdown-menu').forEach((menu, idx) => {
+                if (idx !== index) menu.classList.add('hidden');
+            });
+            const menu = document.getElementById(`retailerMenu_${index}`);
+            if (menu) {
+                menu.classList.toggle('hidden');
+            }
+        }
+
+        // Open Smart Search for Selected Retailer
+        function openRetailerSearch(retailer, modelName, positionName) {
+            const searchQuery = `${modelName} ${positionName} drum head`;
+            const encodedQuery = encodeURIComponent(searchQuery);
+            let url = '';
+
+            if (retailer === 'sweetwater') {
+                url = `https://www.sweetwater.com/store/search.php?s=${encodedQuery}`;
+            } else if (retailer === 'guitarcenter') {
+                url = `https://www.guitarcenter.com/search?Ntt=${encodedQuery}`;
+            } else if (retailer === 'amazon') {
+                url = `https://www.amazon.com/s?k=${encodedQuery}`;
+            }
+
+            if (url) {
+                window.open(url, '_blank');
+            }
+
+            // Hide dropdown after click
+            document.querySelectorAll('.retailer-dropdown-menu').forEach(menu => menu.classList.add('hidden'));
+        }
+
+        function renderDrumCardsGrid(category) {
+            const grid = document.getElementById('drumCardsGrid');
+            grid.innerHTML = '';
+
+            const filteredItems = appState.currentRecipe.items.filter(item => {
+                if (category === 'all') return true;
+                return item.category === category;
+            });
+
+            filteredItems.forEach((item, index) => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between shadow-lg hover:border-slate-700 transition group';
+                
+                const badgeColor = item.category === 'snare' ? 'bg-amber-500/10 text-amber-400 border-amber-500/20' : (item.category === 'tom' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20');
+                
+                const tips = getTuneBotTips(item);
+                const priceRangeStr = `$${item.head.minPrice.toFixed(2)} - $${item.head.maxPrice.toFixed(2)}`;
+                const fullModelName = `${item.head.brand} ${item.head.model}`;
+
+                card.innerHTML = `
+                    <div>
+                        <!-- Header & Badge -->
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold px-2.5 py-1 rounded-full border ${badgeColor} uppercase tracking-wider">${item.position}</span>
+                            <span class="text-xs font-mono font-bold text-emerald-400">${priceRangeStr}</span>
+                        </div>
+
+                        <!-- Product Preview with Image -->
+                        <div class="flex items-start space-x-3 mb-3">
+                            <img src="${item.head.image}" alt="${item.head.model}" class="w-16 h-16 rounded-xl object-cover border border-slate-700 flex-shrink-0 shadow-md">
+                            <div>
+                                <h3 class="text-base font-bold text-white group-hover:text-accent transition">${fullModelName}</h3>
+                                <p class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">${item.head.desc}</p>
+                            </div>
+                        </div>
+                        
+                        <!-- Pro Tips Dropdown Accordion -->
+                        <div class="mt-4 pt-3 border-t border-slate-800/80">
+                            <button onclick="toggleProTipsDropdown(${index})" class="w-full flex items-center justify-between text-left py-1.5 px-2.5 rounded-lg bg-slate-950/60 hover:bg-slate-950 transition border border-slate-800/60">
+                                <div class="flex items-center space-x-2">
+                                    <i data-lucide="sliders" class="w-3.5 h-3.5 text-accent"></i>
+                                    <span class="text-xs font-bold text-accent">Pro Tuning Guide & Tune-Bot Notes (${tips.length})</span>
+                                </div>
+                                <i id="tipsChevron_${index}" data-lucide="chevron-down" class="w-4 h-4 text-slate-400 transition-transform duration-200"></i>
+                            </button>
+                            <div id="tipsContent_${index}" class="hidden mt-2 space-y-2 pl-1 pr-1">
+                                ${tips.map(t => `
+                                    <div class="bg-slate-950/40 p-2.5 rounded-lg border border-slate-800/50">
+                                        <p class="text-xs font-bold text-slate-200 mb-0.5 flex items-center space-x-1.5">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-accent"></span>
+                                            <span>${t.title}</span>
+                                        </p>
+                                        <p class="text-xs text-slate-400 leading-relaxed">${t.text}</p>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-5 pt-3 border-t border-slate-800 flex items-center justify-between relative">
+                        <span class="text-xs text-slate-500 font-mono">Diameter: ${item.size}</span>
+                        
+                        <!-- Retailer Dropdown Container -->
+                        <div class="retailer-dropdown-container relative">
+                            <button onclick="toggleRetailerDropdown(${index}, event)" class="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-accent/10 hover:bg-accent text-accent hover:text-white text-xs font-bold transition border border-accent/30">
+                                <span>Check Retailers</span>
+                                <i data-lucide="chevron-down" class="w-3.5 h-3.5"></i>
+                            </button>
+                            
+                            <!-- Dropdown Menu -->
+                            <div id="retailerMenu_${index}" class="retailer-dropdown-menu hidden absolute right-0 bottom-full mb-2 w-48 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl py-1.5 z-30">
+                                <div class="px-3 py-1.5 border-b border-slate-800 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Select Smart Search</div>
+                                <button onclick="openRetailerSearch('sweetwater', '${fullModelName.replace(/'/g, "\\'")}', '${item.position.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 hover:text-accent font-medium flex items-center justify-between transition">
+                                    <span>Sweetwater</span>
+                                    <i data-lucide="external-link" class="w-3 h-3 text-slate-400"></i>
+                                </button>
+                                <button onclick="openRetailerSearch('guitarcenter', '${fullModelName.replace(/'/g, "\\'")}', '${item.position.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 hover:text-accent font-medium flex items-center justify-between transition">
+                                    <span>Guitar Center</span>
+                                    <i data-lucide="external-link" class="w-3 h-3 text-slate-400"></i>
+                                </button>
+                                <button onclick="openRetailerSearch('amazon', '${fullModelName.replace(/'/g, "\\'")}', '${item.position.replace(/'/g, "\\'")}')" class="w-full text-left px-3 py-2 text-xs text-slate-200 hover:bg-slate-800 hover:text-accent font-medium flex items-center justify-between transition">
+                                    <span>Amazon</span>
+                                    <i data-lucide="external-link" class="w-3 h-3 text-slate-400"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+            lucide.createIcons();
+        }
+
+        // Save & Export Recipe Functions
+        function saveCurrentRecipe() {
+            if (!appState.currentRecipe) return;
+            let saved = [];
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) saved = JSON.parse(stored);
+            } catch (e) {
+                console.error(e);
+            }
+
+            if (!saved.some(r => r.id === appState.currentRecipe.id)) {
+                saved.unshift(appState.currentRecipe);
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+                showToast('Saved', 'Recipe added to your saved list.');
+            } else {
+                showToast('Notice', 'Recipe is already in your saved list.');
+            }
+        }
+
+        function openSavedModal() {
+            const list = document.getElementById('savedRecipesList');
+            list.innerHTML = '';
+            let saved = [];
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) saved = JSON.parse(stored);
+            } catch (e) {
+                console.error(e);
+            }
+
+            document.getElementById('savedCountBadge').textContent = `Saved Recipes (${saved.length})`;
+
+            if (saved.length === 0) {
+                list.innerHTML = '<p class="text-xs text-slate-500 text-center py-8">No saved recipes yet. Generate and save a custom bundle to view it here.</p>';
+            } else {
+                saved.forEach(rec => {
+                    const div = document.createElement('div');
+                    div.className = 'bg-slate-900 border border-slate-800 rounded-xl p-4 flex items-center justify-between';
+                    div.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-sm text-white">${rec.title}</h4>
+                            <p class="text-xs text-slate-400 mt-0.5">Saved on ${rec.date} &bull; Price Range: <span class="text-emerald-400 font-semibold">${rec.totalPriceRange}</span></p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="loadSavedRecipe('${rec.id}')" class="px-3 py-1.5 bg-accent hover:bg-accentHover text-white rounded-lg text-xs font-semibold transition">Load</button>
+                            <button onclick="deleteSavedRecipe('${rec.id}')" class="p-1.5 bg-slate-800 hover:bg-rose-500/20 text-slate-400 hover:text-rose-400 rounded-lg transition">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            </button>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                });
+            }
+
+            document.getElementById('savedModal').classList.remove('hidden');
+        }
+
+        function closeSavedModal() {
+            document.getElementById('savedModal').classList.add('hidden');
+        }
+
+        function loadSavedRecipe(id) {
+            let saved = [];
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) saved = JSON.parse(stored);
+            } catch(e) {}
+
+            const found = saved.find(r => r.id === id);
+            if (found) {
+                appState.currentRecipe = found;
+                renderResultsView();
+                closeSavedModal();
+                goToStep(4);
+                showToast('Loaded', 'Successfully loaded saved recipe.');
+            }
+        }
+
+        function deleteSavedRecipe(id) {
+            let saved = [];
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) saved = JSON.parse(stored);
+            } catch(e) {}
+
+            saved = saved.filter(r => r.id !== id);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+            openSavedModal();
+            showToast('Deleted', 'Recipe removed from saved list.');
+        }
+
+        function copyRecipeSummary() {
+            if (!appState.currentRecipe) return;
+            let text = `--- DRUMTUNE.REHEAD RECIPE ---\n`;
+            text += `${appState.currentRecipe.title}\n`;
+            text += `Genre: ${appState.currentRecipe.genre} | Style: ${appState.currentRecipe.style}\n`;
+            text += `Estimated Total Range: ${appState.currentRecipe.totalPriceRange}\n\n`;
+
+            appState.currentRecipe.items.forEach(item => {
+                text += `[${item.position}] - ${item.head.brand} ${item.head.model} ($${item.head.minPrice.toFixed(2)} - $${item.head.maxPrice.toFixed(2)})\n`;
+            });
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('Copied', 'Recipe list copied to clipboard!');
+            } catch (err) {
+                showToast('Error', 'Failed to copy recipe.');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        function resetApp() {
+            goToStep(1);
+            showToast('Reset', 'Started a new configuration.');
+        }
+
+        function showToast(title, msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastTitle').textContent = title;
+            document.getElementById('toastMsg').textContent = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
+        }
+    </script>
+</body>
+</html>
