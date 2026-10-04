@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DrumTune.Rehead - Custom Drum Head Rehead Tool</title>
-    <!-- Tailwind CSS CDN -->
+    
+    <!-- Tailwind CSS CDN (Self-Contained for Instant Download & GitHub Pages Compatibility) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -15,13 +16,14 @@
                         darkBg: '#0b0f17',
                         cardBg: '#131c2e',
                         cardHover: '#1e293b',
-                        accent: '#f97316', /* Vibrant Orange */
+                        accent: '#f97316',
                         accentHover: '#ea580c'
                     }
                 }
             }
         }
     </script>
+
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Google Fonts Inter -->
@@ -1102,7 +1104,7 @@
             }
         }
 
-        // Open Smart Search for Selected Retailer
+        // Open Smart Search for Selected Retailer (Updated with stable query parameters)
         function openRetailerSearch(retailer, modelName, positionName) {
             const searchQuery = `${modelName} ${positionName} drum head`;
             const encodedQuery = encodeURIComponent(searchQuery);
@@ -1151,13 +1153,10 @@
                             <span class="text-xs font-mono font-bold text-emerald-400">${priceRangeStr}</span>
                         </div>
 
-                        <!-- Product Preview with Image -->
-                        <div class="flex items-start space-x-3 mb-3">
-                            <img src="${item.head.image}" alt="${item.head.model}" class="w-16 h-16 rounded-xl object-cover border border-slate-700 flex-shrink-0 shadow-md">
-                            <div>
-                                <h3 class="text-base font-bold text-white group-hover:text-accent transition">${fullModelName}</h3>
-                                <p class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">${item.head.desc}</p>
-                            </div>
+                        <!-- Product Description Details (Images Removed) -->
+                        <div class="mb-3">
+                            <h3 class="text-base font-bold text-white group-hover:text-accent transition">${fullModelName}</h3>
+                            <p class="text-xs text-slate-400 mt-1 line-clamp-2 leading-relaxed">${item.head.desc}</p>
                         </div>
                         
                         <!-- Pro Tips Dropdown Accordion -->
